@@ -14,13 +14,13 @@ local wan_device = global_section:option(Value, "wan", translate("WAN Device"))
 wan_device.datatype = "network"
 wan_device.default = "wan"
 
-local dl_speed = global_section:option(Value, "download", translate("Download Speed (Mbit/s)"), translate("Total bandwidth"))
+local dl_speed = global_section:option(Value, "download", translate("Download Speed (Kbit/s)"), translate("Total bandwidth"))
 dl_speed.datatype = "and(uinteger,min(1))"
-dl_speed.default = "100"
+dl_speed.default = "100000"
 
-local ul_speed = global_section:option(Value, "upload", translate("Upload Speed (Mbit/s)"), translate("Total bandwidth"))
+local ul_speed = global_section:option(Value, "upload", translate("Upload Speed (Kbit/s)"), translate("Total bandwidth"))
 ul_speed.datatype = "and(uinteger,min(1))"
-ul_speed.default = "50"
+ul_speed.default = "50000"
 
 local device_section = m:section(TypedSection, "device", translate("Speed Limit by IP Address"))
 device_section.template = "cbi/tblsection"
@@ -37,11 +37,11 @@ ipc.neighbors({family = 4, dev = "br-lan"}, function(n)
 	end
 end)
 
-local dl_limit = device_section:option(Value, "download", translate("Download (Mbit/s)"))
+local dl_limit = device_section:option(Value, "download", translate("Download (Kbit/s)"))
 dl_limit.datatype = "and(uinteger,min(1))"
 dl_limit.placeholder = "10"
 
-local ul_limit = device_section:option(Value, "upload", translate("Upload (Mbit/s)"))
+local ul_limit = device_section:option(Value, "upload", translate("Upload (Kbit/s)"))
 ul_limit.datatype = "and(uinteger,min(1))"
 ul_limit.placeholder = "5"
 

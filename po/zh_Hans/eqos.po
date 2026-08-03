@@ -24,11 +24,11 @@ msgstr "启用EQOS"
 msgid "WAN Device"
 msgstr "WAN设备"
 
-msgid "Download Speed (Mbit/s)"
-msgstr "下载速度 (Mbit/s)"
+msgid "Download Speed (Kbit/s)"
+msgstr "下载速度 (Kbit/s)"
 
-msgid "Upload Speed (Mbit/s)"
-msgstr "上传速度 (Mbit/s)"
+msgid "Upload Speed (Kbit/s)"
+msgstr "上传速度 (Kbit/s)"
 
 msgid "Total bandwidth"
 msgstr "总带宽"
@@ -39,11 +39,11 @@ msgstr "按IP限速"
 msgid "IP Address"
 msgstr "IP地址"
 
-msgid "Download (Mbit/s)"
-msgstr "下载 (Mbit/s)"
+msgid "Download (Kbit/s)"
+msgstr "下载 (Kbit/s)"
 
-msgid "Upload (Mbit/s)"
-msgstr "上传 (Mbit/s)"
+msgid "Upload (Kbit/s)"
+msgstr "上传 (Kbit/s)"
 
 msgid "Comment"
 msgstr "备注"
