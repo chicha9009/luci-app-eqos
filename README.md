@@ -55,11 +55,15 @@ luci-app-eqos/
 │   └── usr/
 │       ├── sbin/eqos
 │       └── share/luci/menu.d/luci-app-eqos.json
-│       └── sshare/rpcd/acl.d/luci-app-eqos.json
+│       └── share/rpcd/acl.d/luci-app-eqos.json
 └── README.md
 ```
 
 
 GPL-2.0
+## 更新日志
 
+V2.0.1
+1.优化usr/sbin/eqos脚本
+2.优化www/luci-static/resources/view/eqos.js文件
 
