@@ -1,5 +1,11 @@
-config eqos 'global'
-    option enabled '0'
-    option wan 'wan'
-    option download '100000'
-    option upload '50000'
+
+config eqos 'config'
+	option enabled '1'
+	option download '300000'
+	option upload '30000'
+
+config device
+	option ip '192.168.1.123'
+	option download '1000'
+	option upload '500'
+
