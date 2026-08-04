@@ -5,7 +5,7 @@ config eqos 'config'
 	option upload '30000'
 
 config device
-	option ip '192.168.1.123'
+	option ip '192.168.1.100'
 	option download '1000'
 	option upload '500'
 

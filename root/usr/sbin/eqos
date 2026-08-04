@@ -2,59 +2,99 @@
 
 dev=br-lan
 
+# 根据 IP 生成确定性的 ClassID（十六进制），格式为 1:XXXX
+# 原理：取 IP 的第3、4字节转十六进制，保证同一 IP 永远映射到同一个 ID
+# 例如 192.168.1.100 -> 1:0164  (0x01=1, 0x64=100)
+get_classid() {
+    echo "$1" | awk -F. '{printf "1:%02x%02x", $3, $4}'
+}
+
+# 删除指定 IP 的旧规则（无报错）
+del_ip() {
+    local ip=$1
+    local cid=$(get_classid $ip)
+
+    # 1. 删除下行（br-lan）过滤器
+    tc filter del dev $dev parent 1:0 prio 2 protocol ip u32 match ip dst $ip 2>/dev/null
+    # 2. 删除上行（ifb）过滤器
+    tc filter del dev ${dev}-ifb parent 1:0 prio 2 protocol ip u32 match ip src $ip 2>/dev/null
+    # 3. 删除下行类
+    tc class del dev $dev classid $cid 2>/dev/null
+    # 4. 删除上行类
+    tc class del dev ${dev}-ifb classid $cid 2>/dev/null
+}
+
+# 修改后的 add 命令
+add_ip() {
+    local ip=$1
+    local dl=$2
+    local up=$3
+    local cid=$(get_classid $ip)
+
+    # 【核心改进】先删后增，实现“修改限速”或“覆盖添加”
+    del_ip $ip
+
+    # ---- 下行（下载）限速 ----
+    tc class add dev $dev parent 1:1 classid $cid htb rate ${dl}kbit ceil ${dl}kbit
+    # 增加 prio 2，避免与系统默认规则混淆
+    tc filter add dev $dev parent 1:0 prio 2 protocol ip u32 match ip dst $ip flowid $cid
+
+    # ---- 上行（上传）限速 ----
+    tc class add dev ${dev}-ifb parent 1:1 classid $cid htb rate ${up}kbit ceil ${up}kbit
+    tc filter add dev ${dev}-ifb parent 1:0 prio 2 protocol ip u32 match ip src $ip flowid $cid
+}
+
+# stop 函数保持不变，但加一个强制卸载 ifb 的清理动作
 stop_qos() {
-	tc qdisc del dev $dev root 2>/dev/null
-	tc qdisc del dev $dev ingress 2>/dev/null
-	tc qdisc del dev ${dev}-ifb root 2>/dev/null
-	ip link del dev ${dev}-ifb 2>/dev/null
+    tc qdisc del dev $dev root 2>/dev/null
+    tc qdisc del dev $dev ingress 2>/dev/null
+    tc qdisc del dev ${dev}-ifb root 2>/dev/null
+    ip link del dev ${dev}-ifb 2>/dev/null
 }
 
+# start 函数不变，依然用 stop_qos 清场
 start_qos() {
-	local dl=$1
-	local up=$2
-	
-	tc qdisc add dev $dev root handle 1: htb
-	tc class add dev $dev parent 1: classid 1:1 htb rate ${dl}kbit
-	
-	ip link add dev ${dev}-ifb name ${dev}-ifb type ifb
-	ip link set dev ${dev}-ifb up
-	
-	tc qdisc add dev ${dev}-ifb root handle 1: htb
-	tc class add dev ${dev}-ifb parent 1: classid 1:1 htb rate ${up}kbit
-	
-	tc qdisc add dev $dev ingress
-	tc filter add dev $dev parent ffff: protocol ip u32 match u32 0 0 flowid 1:1 action mirred egress redirect dev ${dev}-ifb
+    local dl=$1
+    local up=$2
+    stop_qos
+
+    tc qdisc add dev $dev root handle 1: htb
+    tc class add dev $dev parent 1: classid 1:1 htb rate ${dl}kbit
+
+    ip link add dev ${dev}-ifb name ${dev}-ifb type ifb
+    ip link set dev ${dev}-ifb up
+
+    tc qdisc add dev ${dev}-ifb root handle 1: htb
+    tc class add dev ${dev}-ifb parent 1: classid 1:1 htb rate ${up}kbit
+
+    tc qdisc add dev $dev ingress
+    tc filter add dev $dev parent ffff: protocol ip u32 match u32 0 0 flowid 1:1 action mirred egress redirect dev ${dev}-ifb
 }
 
+# 修改 case 分支，增加一个独立的 "del" 命令
 case "$1" in
-	"stop")
-		stop_qos
-	;;
-	"start")
-		stop_qos
-		start_qos $2 $3
-	;;
-	"add")
-		ip="$2"
-		dl="$3"
-		up="$4"
-		
-		cnt=$(tc class show dev $dev | wc -l)
-		
-		tc class add dev $dev parent 1:1 classid 1:1$cnt htb rate ${dl}kbit ceil ${dl}kbit
-		tc filter add dev $dev parent 1:0 protocol ip u32 match ip dst $ip flowid 1:1$cnt
-		
-		tc class add dev ${dev}-ifb parent 1:1 classid 1:1$cnt htb rate ${up}kbit ceil ${up}kbit
-		tc filter add dev ${dev}-ifb parent 1:0 protocol ip u32 match ip src $ip flowid 1:1$cnt
-	;;
-	*)
-		echo "Usage: $0 <command> [options]"
-		echo "Commands:"
-		echo "  start dl_rate up_rate       #Total bandwidth (Kbit/s)"
-		echo "  stop"
-		echo "  add ip dl_rate up_rate      #Limiting the bandwidth of a single IP (Kbit/s)"
-		echo "Example:"
-		echo "  $0 start 30 20              # Total bandwidth: down 30Kbit/s up 20Kbit/s"
-		echo "  $0 add 192.168.22.12 10 2   # down 10Kbit/s  up 2Kbit/s"
-	;;
+    "stop")
+        stop_qos
+        ;;
+    "start")
+        stop_qos
+        start_qos $2 $3
+        ;;
+    "add")
+        add_ip $2 $3 $4
+        ;;
+    "del")
+        del_ip $2
+        ;;
+    *)
+        echo "Usage: $0 <command> [options]"
+        echo "Commands:"
+        echo "  start dl_rate up_rate       # Total bandwidth (Kbit/s)"
+        echo "  stop"
+        echo "  add ip dl_rate up_rate      # Add or update IP limit"
+        echo "  del ip                      # Remove IP limit"
+        echo "Example:"
+        echo "  $0 start 30000 20000        # Total: down 30Mbit/s up 20Mbit/s"
+        echo "  $0 add 192.168.22.12 10000 2000   # down 10Mbit/s up 2Mbit/s"
+        ;;
 esac
