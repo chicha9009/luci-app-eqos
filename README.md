@@ -64,6 +64,7 @@ GPL-2.0
 ## 更新日志
 
 V2.0.1
-1.优化usr/sbin/eqos脚本
+1.修改usr/sbin/eqos脚本，由Mbit/s改为Kbit/s,限速更为精细
+
 2.优化www/luci-static/resources/view/eqos.js文件
 

@@ -1,11 +1,11 @@
 
 config eqos 'config'
-	option enabled '1'
+	option enabled '0'
 	option download '300000'
 	option upload '30000'
 
 config device
+	option enabled '0'
 	option ip '192.168.1.100'
-	option download '1000'
-	option upload '500'
-
+	option download '100000'
+	option upload '5000'
